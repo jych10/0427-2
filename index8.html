@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>3D健康迷宮</title>
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #111;
+    color: white;
+}
+#maze {
+    display: grid;
+    grid-template-columns: repeat(7, 60px);
+    gap: 4px;
+    margin: 20px auto;
+}
+.cell {
+    width: 60px;
+    height: 60px;
+    transform: skewY(-5deg);
+}
+.wall {
+    background: linear-gradient(145deg,#222,#555);
+    box-shadow: 3px 3px 6px black;
+}
+.path {
+    background: #ddd;
+}
+.player {
+    background: #4CAF50;
+}
+.goal {
+    background: gold;
+}
+#info { margin-top:10px; }
+button {
+    margin:5px;
+    padding:10px 15px;
+    font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🧠 3D健康迷宮</h2>
+<p>方向鍵移動｜答對才能前進</p>
+
+<div id="maze"></div>
+<div id="info"></div>
+
+<div id="questionBox" style="display:none;">
+<h3 id="question"></h3>
+<div id="choices"></div>
+</div>
+
+<script>
+
+// ===== 迷宮 =====
+const mazeData = [
+[1,1,1,1,1,1,1],
+[1,0,0,0,1,0,1],
+[1,0,1,0,1,0,1],
+[1,0,1,0,0,0,1],
+[1,0,1,1,1,0,1],
+[1,0,0,0,1,0,1],
+[1,1,1,1,1,1,1],
+];
+
+let player = {x:1,y:1};
+let goal = {x:5,y:5};
+let life = 3;
+
+// ===== 題庫（示範20題，你可再叫我補到100）=====
+let questions = [
+{q:"每天建議喝水量？", c:["1000","1500","2000","3000"], a:2},
+{q:"正常體溫？", c:["35","36","37","38"], a:2},
+{q:"一週運動建議？", c:["1天","3天","5天","7天"], a:1},
+{q:"BMI過重？", c:["20","22","24","30"], a:2},
+{q:"最大器官？", c:["心臟","皮膚","肺","肝"], a:1},
+{q:"酒精代謝器官？", c:["腎","肝","肺","胃"], a:1},
+{q:"缺鐵會？", c:["感冒","貧血","頭痛","發燒"], a:1},
+{q:"維生素D幫助？", c:["吸鈣","吸鐵","睡眠","免疫"], a:0},
+{q:"蛋白質功能？", c:["能量","修復","保暖","排毒"], a:1},
+{q:"運動前？", c:["睡覺","暖身","吃飯","喝酒"], a:1},
+
+{q:"流感原因？", c:["細菌","病毒","黴菌","寄生蟲"], a:1},
+{q:"心臟功能？", c:["呼吸","消化","循環","排泄"], a:2},
+{q:"肺功能？", c:["運血","呼吸","消化","排毒"], a:1},
+{q:"腎臟功能？", c:["呼吸","過濾","運動","免疫"], a:1},
+{q:"睡眠不足影響？", c:["身高","注意力","眼睛","頭髮"], a:1},
+{q:"紫外線傷害？", c:["骨頭","皮膚","血液","神經"], a:1},
+{q:"刷牙次數？", c:["1","2","3","4"], a:1},
+{q:"水果富含？", c:["蛋白","脂肪","維生素","鈉"], a:2},
+{q:"壓力影響？", c:["免疫","骨頭","牙齒","頭髮"], a:0},
+{q:"運動好處？", c:["變胖","健康","失眠","疲勞"], a:1}
+];
+
+// 洗牌
+questions = questions.sort(()=>Math.random()-0.5);
+
+// ===== UI =====
+function renderMaze(){
+const maze=document.getElementById("maze");
+maze.innerHTML="";
+mazeData.forEach((row,y)=>{
+row.forEach((cell,x)=>{
+const div=document.createElement("div");
+div.classList.add("cell");
+div.classList.add(cell?"wall":"path");
+if(x===player.x&&y===player.y) div.classList.add("player");
+if(x===goal.x&&y===goal.y) div.classList.add("goal");
+maze.appendChild(div);
+});
+});
+}
+
+function updateLife(){
+document.getElementById("info").innerText =
+"生命值："+"❤️".repeat(life);
+}
+
+// ===== 題目 =====
+let currentMove=null;
+
+function showQuestion(move){
+if(questions.length===0){ move(); return; }
+
+currentMove = move;
+let q=questions.pop();
+
+document.getElementById("questionBox").style.display="block";
+document.getElementById("question").innerText=q.q;
+
+let choicesDiv=document.getElementById("choices");
+choicesDiv.innerHTML="";
+
+q.c.forEach((choice,i)=>{
+let btn=document.createElement("button");
+btn.innerText=choice;
+btn.onclick=()=>{
+if(i===q.a){
+document.getElementById("questionBox").style.display="none";
+currentMove();
+}else{
+alert("答錯！");
+}
+};
+choicesDiv.appendChild(btn);
+});
+}
+
+// ===== 控制 =====
+document.addEventListener("keydown", e=>{
+let newX=player.x;
+let newY=player.y;
+
+if(e.key==="ArrowUp") newY--;
+if(e.key==="ArrowDown") newY++;
+if(e.key==="ArrowLeft") newX--;
+if(e.key==="ArrowRight") newX++;
+
+if(mazeData[newY][newX]===1){
+life--;
+alert("撞牆！");
+updateLife();
+if(life<=0){
+alert("你掛了 💀");
+location.reload();
+}
+return;
+}
+
+// 題目
+showQuestion(()=>{
+player.x=newX;
+player.y=newY;
+
+if(player.x===goal.x && player.y===goal.y){
+alert("找到寶箱 🎁！");
+location.reload();
+}
+
+renderMaze();
+});
+
+});
+
+renderMaze();
+updateLife();
+
+</script>
+</body>
+</html
